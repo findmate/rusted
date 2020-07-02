@@ -29,41 +29,31 @@ AUTH_HEADERS = {'Content-Type': 'application/json',
 # they should not be using this tool
 
 
-def abc_str(length=3):
-    import string
-    return string.ascii_lowercase[:length]
-
-
-def get_account_info():
+def list_account_info():
     api_url = '{0}account'.format(DO_API_URL_BASE)
     response = requests.get(api_url, headers=AUTH_HEADERS)
 
-    if response.status_code == 200:
-        return json.loads(response.content.decode('utf-8'))
-    else:
-        return None
+    if not response.status_code == 200:
+        return
 
+    account_info = json.loads(response.content.decode('utf-8'))
+
+    if account_info is not None:
+        print("Account info: ")
+        for k, v in account_info['account'].items():
+            print('{0}:{1}'.format(k, v))
 
 class Dispatcher(CLICommandsLoader):
     def load_command_table(self, args):
-        with CommandGroup(self, 'abc', '__main__#{}') as g:
-            g.command('str', 'abc_str')
+        with CommandGroup(self, 'list', '__main__#{}') as g:
+            g.command('', 'list_account_info')
         return OrderedDict(self.command_table)
 
     def load_arguments(self, command):
-        with ArgumentsContext(self, 'abc str') as ac:
+        with ArgumentsContext(self, 'list') as ac:
             ac.argument('length', type=int)
         super(Dispatcher, self).load_arguments(command)
 
-
-account_info = get_account_info()
-
-if account_info is not None:
-    print("Here's your info: ")
-    for k, v in account_info['account'].items():
-        print('{0}:{1}'.format(k, v))
-
-
-mycli = CLI(cli_name='mycli', commands_loader_cls=Dispatcher)
+mycli = CLI(cli_name='rusty', commands_loader_cls=Dispatcher)
 exit_code = mycli.invoke(sys.argv[1:])
 sys.exit(exit_code)
