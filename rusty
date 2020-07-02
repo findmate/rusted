@@ -1,0 +1,69 @@
+#!/usr/bin/env python3
+
+import os
+from dotenv import load_dotenv
+import sys
+from collections import OrderedDict
+from knack import CLI, ArgumentsContext, CLICommandsLoader
+from knack.commands import CommandGroup
+import json
+import requests
+
+# hydrate environment vars
+# if the consumer of this script isn't capable of setting up .env
+# they probably shouldn't be using this
+load_dotenv()
+
+DO_API_TOKEN = os.getenv("DO_API_TOKEN")
+DO_API_URL_BASE = os.getenv("DO_API_URL_BASE")
+
+if not DO_API_TOKEN or not DO_API_URL_BASE:
+    print("Missing .env configuration, please refer to README.md for setup instructions")
+    exit()
+
+AUTH_HEADERS = {'Content-Type': 'application/json',
+                'Authorization': 'Bearer {0}'.format(DO_API_TOKEN)}
+
+# get creds from env
+# if the person is not capable of doing that
+# they should not be using this tool
+
+
+def abc_str(length=3):
+    import string
+    return string.ascii_lowercase[:length]
+
+
+def get_account_info():
+    api_url = '{0}account'.format(DO_API_URL_BASE)
+    response = requests.get(api_url, headers=AUTH_HEADERS)
+
+    if response.status_code == 200:
+        return json.loads(response.content.decode('utf-8'))
+    else:
+        return None
+
+
+class Dispatcher(CLICommandsLoader):
+    def load_command_table(self, args):
+        with CommandGroup(self, 'abc', '__main__#{}') as g:
+            g.command('str', 'abc_str')
+        return OrderedDict(self.command_table)
+
+    def load_arguments(self, command):
+        with ArgumentsContext(self, 'abc str') as ac:
+            ac.argument('length', type=int)
+        super(Dispatcher, self).load_arguments(command)
+
+
+account_info = get_account_info()
+
+if account_info is not None:
+    print("Here's your info: ")
+    for k, v in account_info['account'].items():
+        print('{0}:{1}'.format(k, v))
+
+
+mycli = CLI(cli_name='mycli', commands_loader_cls=Dispatcher)
+exit_code = mycli.invoke(sys.argv[1:])
+sys.exit(exit_code)
